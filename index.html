@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>FireInspect Pro — Inspecciones NFPA 25</title>
+<meta name="description" content="Aplicación de inspecciones de sistemas de protección contra incendios a base de agua según NFPA 25">
+<meta name="theme-color" content="#C0392B">
+
+<!-- PWA: permite instalar la app en pantalla de inicio de Android/iOS/PC -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FireInspect">
+
+<link rel="stylesheet" href="css/estilos.css">
+<link rel="stylesheet" href="vendor/tabler-icons/tabler-icons.min.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ BARRA SUPERIOR (solo mobile) ============ -->
+  <header class="topbar">
+    <div class="logo-app"><i class="ti ti-flame-filled" aria-hidden="true"></i></div>
+    <div class="titulo">
+      <h1>FireInspect Pro</h1>
+      <p id="empresa-nombre-top">Inspecciones NFPA 25</p>
+    </div>
+    <div class="acciones">
+      <button class="icon-btn" onclick="UI.abrirModal('modal-config')" aria-label="Configuración"><i class="ti ti-settings" aria-hidden="true"></i></button>
+    </div>
+  </header>
+
+  <!-- ============ SIDEBAR (solo tablet/PC) ============ -->
+  <aside class="sidebar">
+    <div class="logo-app"><i class="ti ti-flame-filled" style="color:white;font-size:20px;" aria-hidden="true"></i></div>
+    <div class="titulo">
+      <h1>FireInspect Pro</h1>
+      <p>Inspecciones NFPA 25</p>
+    </div>
+    <nav id="sidebar-nav">
+      <button data-pantalla="dashboard" class="activo" onclick="UI.irA('dashboard')"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>Inicio</button>
+      <button data-pantalla="calendario" onclick="UI.irA('calendario')"><i class="ti ti-calendar" aria-hidden="true"></i>Agenda</button>
+      <button data-pantalla="equipos" onclick="UI.irA('equipos')"><i class="ti ti-engine" aria-hidden="true"></i>Equipos</button>
+      <button data-pantalla="reportes" onclick="UI.irA('reportes')"><i class="ti ti-building-skyscraper" aria-hidden="true"></i>Panel PBSH</button>
+      <button data-pantalla="informe-consolidado" onclick="UI.irA('informe-consolidado')"><i class="ti ti-file-analytics" aria-hidden="true"></i>Informe</button>
+    </nav>
+    <button class="btn btn-secundario btn-block" onclick="UI.abrirModal('modal-config')" style="margin-top:auto;"><i class="ti ti-settings" aria-hidden="true"></i> Configuración</button>
+  </aside>
+
+  <!-- ============ CONTENIDO PRINCIPAL ============ -->
+  <main class="contenido">
+
+    <!-- ---------------- DASHBOARD ---------------- -->
+    <section id="pantalla-dashboard" class="pantalla activa">
+      <!-- Franja compacta de estado (tocable) -->
+      <div id="dash-franja" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
+
+      <!-- Grilla de clientes con logos -->
+      <div id="dash-grilla-clientes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;"></div>
+    </section>
+
+    <!-- ---------------- CLIENTES ---------------- -->
+    <section id="pantalla-clientes" class="pantalla">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <p class="seccion-titulo" style="margin:0;">Mis clientes</p>
+        <button class="btn btn-primary btn-sm" onclick="UI.abrirModalCliente()"><i class="ti ti-plus" aria-hidden="true"></i> Nuevo</button>
+      </div>
+      <div id="lista-clientes"></div>
+    </section>
+
+    <!-- ---------------- DETALLE DE CLIENTE ---------------- -->
+    <section id="pantalla-detalle-cliente" class="pantalla">
+      <button class="btn btn-secundario btn-sm" onclick="UI.irA('clientes')" style="margin-bottom:14px;"><i class="ti ti-arrow-left" aria-hidden="true"></i> Volver a clientes</button>
+      <div id="detalle-cliente-contenido"></div>
+    </section>
+
+    <!-- ---------------- CURVA DE DESEMPEÑO (PRUEBA ANUAL BOMBA) ---------------- -->
+    <section id="pantalla-curva-desempeno" class="pantalla">
+      <div id="curva-desempeno-contenido"></div>
+    </section>
+
+    <!-- ---------------- INSPECCIÓN ---------------- -->
+    <section id="pantalla-inspeccion" class="pantalla">
+      <div class="tabs-scroll" id="tabs-sistemas"></div>
+      <div id="form-inspeccion-contenido"></div>
+    </section>
+
+    <!-- ---------------- PLANES DE ACCIÓN ---------------- -->
+    <section id="pantalla-planes" class="pantalla">
+      <div class="tabs-scroll" style="margin-bottom:16px;">
+        <button class="tab-btn activo" data-subtab="planes" onclick="UI.cambiarSubTabSeguimiento('planes',this)"><i class="ti ti-list-check" aria-hidden="true"></i>Planes de acción</button>
+        <button class="tab-btn" data-subtab="incidentes" onclick="UI.cambiarSubTabSeguimiento('incidentes',this)"><i class="ti ti-alert-octagon" aria-hidden="true"></i>Incidentes</button>
+        <button class="tab-btn" data-subtab="auditoria" onclick="UI.cambiarSubTabSeguimiento('auditoria',this)"><i class="ti ti-shield-exclamation" aria-hidden="true"></i>Auditoría</button>
+      </div>
+
+      <!-- SUB-PANTALLA: Planes de acción -->
+      <div id="subtab-planes" class="subtab-seguimiento">
+        <div class="metricas" id="planes-metricas" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;"></div>
+        <div class="tabs-scroll">
+          <button class="tab-btn activo" data-filtro-plan="todos" onclick="UI.filtrarPlanes('todos',this)">Todos</button>
+          <button class="tab-btn" data-filtro-plan="pendiente" onclick="UI.filtrarPlanes('pendiente',this)">Pendientes</button>
+          <button class="tab-btn" data-filtro-plan="en_proceso" onclick="UI.filtrarPlanes('en_proceso',this)">En proceso</button>
+          <button class="tab-btn" data-filtro-plan="vencido" onclick="UI.filtrarPlanes('vencido',this)">Vencidos</button>
+          <button class="tab-btn" data-filtro-plan="cerrado" onclick="UI.filtrarPlanes('cerrado',this)">Cerrados</button>
+        </div>
+        <div id="lista-planes"></div>
+      </div>
+
+      <!-- SUB-PANTALLA: Incidentes (Recomendación 4) -->
+      <div id="subtab-incidentes" class="subtab-seguimiento" style="display:none;">
+        <div class="metricas" id="incidentes-metricas" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;"></div>
+        <button class="btn btn-primary btn-block" style="margin-bottom:14px;" onclick="UI.abrirModalIncidente()"><i class="ti ti-plus" aria-hidden="true"></i> Registrar incidente</button>
+        <div id="lista-incidentes"></div>
+      </div>
+
+      <!-- SUB-PANTALLA: Hallazgos de auditoría (Recomendación 5) -->
+      <div id="subtab-auditoria" class="subtab-seguimiento" style="display:none;">
+        <p style="font-size:12px;color:var(--gris-500);margin-bottom:14px;line-height:1.5;">Condiciones inseguras detectadas por fuera del circuito de inspección programada (recorridas, denuncias, observación directa).</p>
+        <div class="metricas" id="auditoria-metricas" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px;"></div>
+        <button class="btn btn-primary btn-block" style="margin-bottom:14px;" onclick="UI.abrirModalHallazgo()"><i class="ti ti-plus" aria-hidden="true"></i> Registrar hallazgo</button>
+        <div id="lista-hallazgos"></div>
+      </div>
+    </section>
+
+    <!-- ---------------- CALENDARIO ---------------- -->
+    <section id="pantalla-calendario" class="pantalla">
+      <div class="card">
+        <div class="cal-header">
+          <button class="btn btn-sm btn-secundario" onclick="UI.cambiarMesCalendario(-1)"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+          <span id="cal-mes-actual"></span>
+          <button class="btn btn-sm btn-secundario" onclick="UI.cambiarMesCalendario(1)"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <div class="seccion-titulo">Próximos eventos</div>
+      <div class="card"><div id="cal-lista-eventos"></div></div>
+
+      <button class="btn btn-primary btn-block" onclick="UI.abrirModalEvento()"><i class="ti ti-plus" aria-hidden="true"></i> Agendar inspección</button>
+    </section>
+
+    <!-- ---------------- REPORTES ---------------- -->
+    <section id="pantalla-equipos" class="pantalla">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;">
+        <h1 style="font-size:18px;font-weight:700;color:var(--gris-900);">Parque de equipos</h1>
+        <span style="font-size:12.5px;color:var(--gris-500);">Toda la cartera</span>
+      </div>
+
+      <div class="card">
+        <div class="card-titulo"><i class="ti ti-engine" aria-hidden="true"></i>Bombas contra incendio
+          <span class="ref-norma" id="equipos-bombas-contador"></span>
+        </div>
+        <div id="equipos-filtros-bombas" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <div id="equipos-lista-bombas"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-titulo"><i class="ti ti-building-community" aria-hidden="true"></i>Infraestructura por empresa</div>
+        <div id="equipos-resumen-empresas"></div>
+      </div>
+    </section>
+
+    <section id="pantalla-informe-consolidado" class="pantalla">
+      <div id="ic-contenido"></div>
+    </section>
+
+    <section id="pantalla-reportes" class="pantalla">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;">
+        <h1 id="panel-titulo" style="font-size:18px;font-weight:700;color:var(--gris-900);">Panel PBSH</h1>
+        <span id="panel-subtitulo" style="font-size:12.5px;color:var(--gris-500);">Control de cartera e intervenciones</span>
+      </div>
+
+      <div class="metricas" id="reportes-metricas"></div>
+
+      <!-- Seguimiento macro de intervenciones (todos los clientes) -->
+      <div class="card">
+        <div class="card-titulo"><i class="ti ti-list-check" aria-hidden="true"></i>Seguimiento de intervenciones
+          <span class="ref-norma" id="panel-interv-contador"></span>
+        </div>
+        <div id="panel-filtros-interv" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <div id="panel-tabla-interv" style="overflow-x:auto;"></div>
+        <button class="btn btn-sm btn-secundario" style="margin-top:10px;" onclick="UI.irA('planes')" id="panel-link-modulos">
+          <i class="ti ti-external-link" aria-hidden="true"></i> Módulo completo: planes · incidentes · auditoría
+        </button>
+      </div>
+
+      <!-- Comparativo de cumplimiento entre clientes -->
+      <div class="card" id="card-comparativo">
+        <div class="card-titulo"><i class="ti ti-chart-bar" aria-hidden="true"></i>Cumplimiento por cliente</div>
+        <div id="panel-comparativo"></div>
+      </div>
+
+      <!-- Gráficos de gestión: cargado vs ejecutado -->
+      <div class="grid-2col" id="panel-graficos-gestion">
+        <div class="card">
+          <div class="card-titulo"><i class="ti ti-list-check" aria-hidden="true"></i>Planes de acción<span class="ref-norma">Cargados vs. resueltos</span></div>
+          <div id="panel-graf-planes"></div>
+        </div>
+        <div class="card">
+          <div class="card-titulo"><i class="ti ti-clipboard-check" aria-hidden="true"></i>Inspecciones ${new Date().getFullYear()}<span class="ref-norma">Planificadas vs. ejecutadas</span></div>
+          <div id="panel-graf-insp"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-titulo"><i class="ti ti-list-details" aria-hidden="true"></i>Historial global<span class="ref-norma" id="panel-historial-contador"></span></div>
+        <div id="lista-historial-inspecciones"></div>
+      </div>
+
+      <div class="seccion-titulo">Generar reporte PDF</div>
+      <div class="card">
+        <div class="campo">
+          <label>Cliente</label>
+          <select id="rep-cliente"></select>
+        </div>
+        <div class="campo">
+          <label>Tipo de sistema</label>
+          <select id="rep-sistema">
+            <option value="todos">Todos los sistemas</option>
+            <option value="tanque">Tanques de reserva</option>
+            <option value="bomba">Bombas contra incendio</option>
+            <option value="hidrante">Hidrantes y mangueras</option>
+            <option value="rociador">Rociadores (RISER/ECA)</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Período</label>
+          <select id="rep-periodo">
+            <option value="todos">Todo el historial</option>
+            <option value="30">Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="365">Último año</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--gris-700);">
+            <input type="checkbox" id="rep-logo" checked style="accent-color:var(--rojo);width:16px;height:16px;"> Incluir logo
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--gris-700);">
+            <input type="checkbox" id="rep-firma" checked style="accent-color:var(--rojo);width:16px;height:16px;"> Firma digital
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--gris-700);">
+            <input type="checkbox" id="rep-fotos" checked style="accent-color:var(--rojo);width:16px;height:16px;"> Fotos
+          </label>
+        </div>
+        <div class="btn-fila" style="margin-top:14px;">
+          <button class="btn btn-primary" onclick="UI.generarReporteConsolidado()">
+            <i class="ti ti-file-type-pdf" aria-hidden="true"></i> Generar PDF
+          </button>
+          <button class="btn btn-secundario" onclick="UI.abrirModalEnviarEmail()">
+            <i class="ti ti-mail" aria-hidden="true"></i> Enviar por email
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ NAVEGACIÓN INFERIOR (solo mobile) ============ -->
+  <nav class="navbar">
+    <button data-pantalla="dashboard" class="activo" onclick="UI.irA('dashboard')"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>Inicio</button>
+    <button data-pantalla="calendario" onclick="UI.irA('calendario')"><i class="ti ti-calendar" aria-hidden="true"></i>Agenda</button>
+    <button data-pantalla="equipos" onclick="UI.irA('equipos')"><i class="ti ti-engine" aria-hidden="true"></i>Equipos</button>
+    <button data-pantalla="reportes" onclick="UI.irA('reportes')"><i class="ti ti-building-skyscraper" aria-hidden="true"></i>Panel PBSH</button>
+    <button data-pantalla="informe-consolidado" onclick="UI.irA('informe-consolidado')"><i class="ti ti-file-analytics" aria-hidden="true"></i>Informe</button>
+  </nav>
+
+  <button class="fab" id="fab-nueva-inspeccion" onclick="UI.irA('inspeccion')" aria-label="Nueva inspección"><i class="ti ti-plus" aria-hidden="true"></i></button>
+
+</div>
+
+<!-- ============ MODAL: Nuevo / editar cliente ============ -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-cliente-titulo">Nuevo cliente</h2>
+      <button onclick="UI.cerrarModal('modal-cliente')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <input type="hidden" id="cliente-id-edit">
+    <div class="campo"><label>Nombre del cliente / edificio *</label><input type="text" id="cliente-nombre" placeholder="Ej: Hospital San Martín"></div>
+    <div class="campo"><label>Dirección</label><input type="text" id="cliente-direccion" placeholder="Calle, número, ciudad"></div>
+    <div class="campo-fila">
+      <div class="campo"><label>Contacto</label><input type="text" id="cliente-contacto" placeholder="Nombre del referente"></div>
+      <div class="campo"><label>Teléfono</label><input type="text" id="cliente-telefono" placeholder="11-..."></div>
+    </div>
+    <div class="campo"><label>Email de contacto (para enviar reportes)</label><input type="email" id="cliente-email" placeholder="contacto@empresa.com"></div>
+    <div class="campo">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="cliente-solo-incidentes" style="width:16px;height:16px;accent-color:var(--rojo);">
+        Cliente solo de incidentes (sin inspecciones NFPA 25 regulares)
+      </label>
+    </div>
+    <div class="campo">
+      <label>Logo del cliente (para reportes PDF)</label>
+      <div class="upload-zone" id="cliente-logo-zone" onclick="document.getElementById('cliente-logo-input').click()">
+        <i class="ti ti-photo-plus" aria-hidden="true"></i>
+        <span id="cliente-logo-texto">Tocar para subir logo (PNG)</span>
+        <input type="file" id="cliente-logo-input" accept="image/png,image/jpeg">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarCliente()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar cliente</button>
+    <button class="btn btn-peligro btn-block" id="btn-eliminar-cliente" style="display:none;margin-top:8px;" onclick="UI.iniciarEliminacionCliente()"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar cliente</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: Confirmar eliminación de cliente con archivado ============ -->
+<div class="modal-overlay" id="modal-confirmar-eliminar-cliente">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Eliminar cliente</h2>
+      <button onclick="UI.cerrarModal('modal-confirmar-eliminar-cliente')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="confirmar-eliminar-contenido"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Foto / cámara ============ -->
+<div class="modal-overlay" id="modal-foto">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Agregar foto de defecto</h2>
+      <button onclick="UI.cerrarModal('modal-foto')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="upload-zone" onclick="document.getElementById('foto-input-camara').click()">
+      <i class="ti ti-camera-plus" aria-hidden="true"></i>
+      <span>Tocar para tomar foto o elegir de galería</span>
+      <input type="file" id="foto-input-camara" accept="image/*" capture="environment">
+    </div>
+    <div id="foto-preview-actual" style="margin-top:14px;"></div>
+    <div class="campo" style="margin-top:14px;">
+      <label>Descripción breve del defecto</label>
+      <input type="text" id="foto-descripcion" placeholder="Ej: corrosión en válvula de paso">
+    </div>
+    <button class="btn btn-primary btn-block" id="btn-confirmar-foto" disabled onclick="UI.confirmarFoto()"><i class="ti ti-check" aria-hidden="true"></i> Agregar al checklist</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: Firma digital ============ -->
+<div class="modal-overlay" id="modal-firma">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Firma del inspector</h2>
+      <button onclick="UI.cerrarModal('modal-firma')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <p style="font-size:12.5px;color:var(--gris-500);margin-bottom:12px;">Firme con el dedo o lápiz óptico dentro del recuadro</p>
+    <div class="firma-canvas-wrap">
+      <canvas id="firma-canvas"></canvas>
+      <div class="firma-placeholder" id="firma-placeholder">Firme aquí</div>
+    </div>
+    <div class="btn-fila">
+      <button class="btn btn-secundario" onclick="UI.limpiarFirma()"><i class="ti ti-eraser" aria-hidden="true"></i> Borrar</button>
+      <button class="btn btn-primary" onclick="UI.confirmarFirma()"><i class="ti ti-check" aria-hidden="true"></i> Confirmar firma</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Nuevo evento de calendario ============ -->
+<div class="modal-overlay" id="modal-evento">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Agendar inspección</h2>
+      <button onclick="UI.cerrarModal('modal-evento')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="campo"><label>Cliente</label><select id="evento-cliente"></select></div>
+    <div class="campo"><label>Sistema a inspeccionar</label>
+      <select id="evento-sistema">
+        <option value="tanque">Tanque de reserva</option>
+        <option value="bomba">Bomba contra incendio</option>
+        <option value="hidrante">Hidrante / mangueras</option>
+        <option value="rociador">Rociadores (RISER/ECA)</option>
+      </select>
+    </div>
+    <div class="campo-fila">
+      <div class="campo"><label>Fecha</label><input type="date" id="evento-fecha"></div>
+      <div class="campo"><label>Hora</label><input type="time" id="evento-hora" value="09:00"></div>
+    </div>
+    <div class="campo"><label>Nota (opcional)</label><input type="text" id="evento-nota" placeholder="Ej: coordinar con encargado de mantenimiento"></div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarEvento()"><i class="ti ti-calendar-plus" aria-hidden="true"></i> Agendar</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: Registrar incidente (Recomendación 4) ============ -->
+<div class="modal-overlay" id="modal-incidente">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Registrar incidente</h2>
+      <button onclick="UI.cerrarModal('modal-incidente')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="campo">
+      <label>Cliente</label>
+      <select id="incidente-cliente" onchange="UI.toggleClienteLibreIncidente()">
+        <option value="">Cliente sin sistema cargado (ingresar nombre)</option>
+      </select>
+    </div>
+    <div class="campo" id="incidente-cliente-libre-wrap" style="display:none;">
+      <label>Nombre del cliente / ubicación</label>
+      <input type="text" id="incidente-cliente-libre" placeholder="Ej: Depósito Lomas (cliente sin sistema cargado aún)">
+    </div>
+    <div class="campo-fila">
+      <div class="campo"><label>Fecha</label><input type="date" id="incidente-fecha"></div>
+      <div class="campo"><label>Hora</label><input type="time" id="incidente-hora"></div>
+    </div>
+    <div class="campo">
+      <label>Tipo de evento</label>
+      <select id="incidente-tipo"></select>
+    </div>
+    <div class="campo">
+      <label>Sistema relacionado (opcional)</label>
+      <select id="incidente-sistema">
+        <option value="">No corresponde / no aplica</option>
+        <option value="tanque">Tanque de reserva</option>
+        <option value="bomba">Bomba contra incendio</option>
+        <option value="hidrante">Hidrante / mangueras</option>
+        <option value="rociador">Rociadores (RISER/ECA)</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="incidente-alarma-falsa" style="width:16px;height:16px;accent-color:var(--rojo);">
+        Fue una alarma falsa (no hubo incendio real)
+      </label>
+    </div>
+    <div class="campo"><label>Descripción del evento</label><textarea id="incidente-descripcion" placeholder="Qué ocurrió, cómo se detectó..."></textarea></div>
+    <div class="campo"><label>Daños reportados (si hubo)</label><input type="text" id="incidente-danos" placeholder="Ej: sin daños / rotura de cañería"></div>
+    <div class="campo"><label>Acciones tomadas</label><input type="text" id="incidente-acciones" placeholder="Ej: corte de suministro, aviso a bomberos"></div>
+    <div class="campo"><label>Reportado por</label><input type="text" id="incidente-responsable" placeholder="Nombre de quien reporta"></div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarIncidente()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar incidente</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: Registrar hallazgo de auditoría (Recomendación 5) ============ -->
+<div class="modal-overlay" id="modal-hallazgo">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Registrar hallazgo de auditoría</h2>
+      <button onclick="UI.cerrarModal('modal-hallazgo')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <p style="font-size:12px;color:var(--gris-500);margin-bottom:14px;">Condición insegura detectada fuera de una inspección programada. Genera automáticamente un plan de acción con seguimiento.</p>
+    <div class="campo"><label>Cliente</label><select id="hallazgo-cliente"></select></div>
+    <div class="campo"><label>Fecha de detección</label><input type="date" id="hallazgo-fecha"></div>
+    <div class="campo">
+      <label>Categoría</label>
+      <select id="hallazgo-categoria"></select>
+    </div>
+    <div class="campo">
+      <label>Severidad</label>
+      <select id="hallazgo-severidad">
+        <option value="critica">Crítica (plazo 3 días)</option>
+        <option value="alta">Alta (plazo 7 días)</option>
+        <option value="media" selected>Media (plazo 30 días)</option>
+        <option value="baja">Baja (plazo 90 días)</option>
+      </select>
+    </div>
+    <div class="campo"><label>Ubicación específica</label><input type="text" id="hallazgo-ubicacion" placeholder="Ej: depósito planta baja, sector B"></div>
+    <div class="campo"><label>Descripción de la condición insegura</label><textarea id="hallazgo-descripcion" placeholder="Qué se observó..."></textarea></div>
+    <div class="campo"><label>Contexto de la detección</label><input type="text" id="hallazgo-contexto" placeholder="Ej: recorrida de auditoría interna, denuncia de personal"></div>
+    <div class="campo"><label>Detectado por</label><input type="text" id="hallazgo-detectado-por" placeholder="Nombre del auditor/observador"></div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarHallazgo()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar hallazgo</button>
+  </div>
+</div>
+
+<!-- ============ MODAL: Enviar reporte por email (Recomendación 3) ============ -->
+<div class="modal-overlay" id="modal-enviar-email">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Enviar reporte</h2>
+      <button onclick="UI.cerrarModal('modal-enviar-email')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="enviar-email-contenido"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Configuración ============ -->
+<div class="modal-overlay" id="modal-config">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Configuración</h2>
+      <button onclick="UI.cerrarModal('modal-config')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="campo"><label>Nombre de tu empresa inspectora</label><input type="text" id="config-empresa" placeholder="Ej: García Inspecciones SRL"></div>
+    <div class="campo"><label>Nombre del inspector por defecto</label><input type="text" id="config-inspector" placeholder="Ej: Ing. Juan García"></div>
+
+    <div class="campo"><label>URL de la app (para invitaciones)</label>
+      <input type="url" id="config-app-url" placeholder="Ej: https://pbsh.github.io/fireinspect" autocapitalize="none">
+      <p style="font-size:11.5px;color:var(--gris-500);margin-top:4px;">Cuando publiques la app, pegá acá su dirección: las invitaciones por email la incluirán como link de acceso.</p>
+    </div>
+
+    <div class="campo">
+      <label>Logo de tu empresa</label>
+      <p style="font-size:11.5px;color:var(--gris-500);margin-bottom:8px;line-height:1.5;">
+        Se imprime en el encabezado de todos los informes, junto al logo del cliente
+        (que se carga en la ficha de cada cliente). Ideal PNG con fondo blanco o transparente.
+      </p>
+      <div id="config-logo-preview" style="display:none;background:white;border:1.5px solid var(--gris-300);border-radius:var(--border-radius-md);padding:10px;text-align:center;margin-bottom:8px;">
+        <img id="config-logo-img" src="" alt="Logo de la empresa" style="max-height:60px;max-width:100%;object-fit:contain;">
+      </div>
+      <div class="btn-fila" style="margin-top:0;">
+        <button class="btn btn-secundario btn-sm" onclick="document.getElementById('config-logo-input').click()">
+          <i class="ti ti-photo" aria-hidden="true"></i> <span id="config-logo-btn-texto">Cargar logo</span>
+        </button>
+        <button class="btn btn-secundario btn-sm" id="config-logo-quitar" style="display:none;" onclick="UI.quitarLogoEmpresa()">
+          <i class="ti ti-trash" aria-hidden="true"></i> Quitar
+        </button>
+      </div>
+      <input type="file" id="config-logo-input" accept="image/*" style="display:none;" onchange="UI.cargarLogoEmpresa(this)">
+    </div>
+
+    <div class="campo">
+      <label>Firma predeterminada del inspector</label>
+      <p style="font-size:11.5px;color:var(--gris-500);margin-bottom:8px;line-height:1.5;">
+        Cargá una imagen de tu firma sobre fondo blanco. Se va a usar automáticamente en todas las
+        visualizaciones e informes PDF, sin necesidad de firmar cada inspección a mano.
+      </p>
+      <div id="config-firma-preview" style="display:none;background:white;border:1.5px solid var(--gris-300);border-radius:var(--border-radius-md);padding:10px;text-align:center;margin-bottom:8px;">
+        <img id="config-firma-img" src="" alt="Firma predeterminada" style="max-height:70px;max-width:100%;object-fit:contain;">
+      </div>
+      <div class="btn-fila" style="margin-top:0;">
+        <button class="btn btn-secundario btn-sm" onclick="document.getElementById('config-firma-input').click()">
+          <i class="ti ti-signature" aria-hidden="true"></i> <span id="config-firma-btn-texto">Cargar firma</span>
+        </button>
+        <button class="btn btn-secundario btn-sm" id="config-firma-quitar" style="display:none;" onclick="UI.quitarFirmaPredeterminada()">
+          <i class="ti ti-trash" aria-hidden="true"></i> Quitar
+        </button>
+      </div>
+      <input type="file" id="config-firma-input" accept="image/*" style="display:none;" onchange="UI.cargarFirmaPredeterminada(this)">
+    </div>
+
+    <p style="font-size:11.5px;color:var(--gris-500);margin-bottom:16px;">
+      <i class="ti ti-info-circle" aria-hidden="true"></i> La app usa <strong>PSI</strong> y <strong>GPM</strong> como unidades estándar NFPA 25. La conversión a bar y L/min se muestra automáticamente debajo de cada campo.
+    </p>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarConfig()" style="margin-bottom:18px;"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar configuración</button>
+
+    <div class="seccion-titulo" style="margin-top:6px;">Usuarios y control de acceso</div>
+    <p style="font-size:12px;color:var(--gris-500);margin-bottom:10px;line-height:1.5;">
+      <strong>Administrador:</strong> acceso total — carga, modifica y programa.
+      <strong>Visualizador:</strong> solo ve inspecciones ejecutadas y descarga PDF.
+      Al crear el primer usuario, la app pedirá iniciar sesión.
+    </p>
+    <div id="lista-usuarios" style="margin-bottom:10px;"></div>
+    <div class="btn-fila" style="margin-top:0;margin-bottom:18px;">
+      <button class="btn btn-secundario" onclick="UI.abrirModalUsuario()"><i class="ti ti-user-plus" aria-hidden="true"></i> Agregar usuario</button>
+      <button class="btn btn-secundario" id="btn-cerrar-sesion" style="display:none;" onclick="UI.cerrarSesionUI()"><i class="ti ti-logout" aria-hidden="true"></i> Cerrar sesión</button>
+    </div>
+
+    <div class="seccion-titulo" style="margin-top:6px;">Respaldo de datos</div>
+    <p style="font-size:12px;color:var(--gris-500);margin-bottom:12px;">Exportá toda tu información (clientes, inspecciones, fotos) a un archivo, o restaurala en otro dispositivo.</p>
+    <div class="btn-fila" style="margin-top:0;">
+      <button class="btn btn-secundario" onclick="UI.exportarRespaldo()"><i class="ti ti-download" aria-hidden="true"></i> Exportar todo</button>
+      <button class="btn btn-secundario" onclick="document.getElementById('input-importar').click()"><i class="ti ti-upload" aria-hidden="true"></i> Importar</button>
+      <input type="file" id="input-importar" accept=".json" style="display:none;">
+    </div>
+  </div>
+</div>
+
+<!-- ============ Pantalla de login (visible solo si hay usuarios creados) ============ -->
+<div id="pantalla-login" style="display:none;position:fixed;inset:0;background:linear-gradient(160deg,#B03A2E 0%,#7B241C 100%);z-index:5000;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:white;border-radius:16px;padding:30px 26px;width:100%;max-width:380px;box-shadow:0 18px 50px rgba(0,0,0,0.35);">
+    <div style="text-align:center;margin-bottom:22px;">
+      <img id="login-logo" src="" alt="" style="display:none;max-height:64px;max-width:200px;object-fit:contain;margin:0 auto 10px;">
+      <div id="login-icono" style="width:58px;height:58px;border-radius:14px;background:#B03A2E14;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+        <i class="ti ti-flame" style="font-size:30px;color:#B03A2E;" aria-hidden="true"></i>
+      </div>
+      <h1 id="login-titulo" style="font-size:19px;font-weight:700;color:var(--gris-900);">FireInspect Pro</h1>
+      <p style="font-size:12.5px;color:var(--gris-500);">Inspecciones NFPA 25</p>
+    </div>
+    <div class="campo"><label>Usuario</label>
+      <input type="text" id="login-usuario" autocomplete="username" autocapitalize="none" placeholder="Tu nombre de usuario"
+             onkeydown="if(event.key==='Enter')document.getElementById('login-pin').focus()">
+    </div>
+    <div class="campo"><label>PIN</label>
+      <input type="password" id="login-pin" inputmode="numeric" autocomplete="current-password" placeholder="••••"
+             onkeydown="if(event.key==='Enter')UI.intentarLogin()">
+    </div>
+    <p id="login-error" style="display:none;font-size:12.5px;color:var(--rojo);margin-bottom:10px;"><i class="ti ti-alert-circle" aria-hidden="true"></i> Usuario o PIN incorrectos</p>
+    <button class="btn btn-primary btn-block" onclick="UI.intentarLogin()"><i class="ti ti-login" aria-hidden="true"></i> Ingresar</button>
+  </div>
+</div>
+
+<!-- ============ Modal: Crear usuario ============ -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-header">
+      <h2>Nuevo usuario</h2>
+      <button onclick="UI.cerrarModal('modal-usuario')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="campo"><label>Nombre completo *</label>
+      <input type="text" id="usuario-nombre" placeholder="Ej: Pablo Banegas / Guillermo Lagos">
+    </div>
+    <div class="campo"><label>Nombre de usuario *</label>
+      <input type="text" id="usuario-usuario" autocapitalize="none" placeholder="Ej: pablo, guillermo.lagos">
+    </div>
+    <div class="campo"><label>PIN (4 a 8 dígitos) *</label>
+      <input type="password" id="usuario-pin" inputmode="numeric" placeholder="••••">
+    </div>
+    <div class="campo"><label>Email (para enviarle la invitación)</label>
+      <input type="email" id="usuario-email" autocapitalize="none" placeholder="Ej: guillermo@newpga.com.ar">
+    </div>
+    <div class="campo"><label>Perfil *</label>
+      <select id="usuario-rol" onchange="document.getElementById('usuario-cliente-wrap').style.display = this.value==='visualizador' ? 'block' : 'none'">
+        <option value="admin">Administrador — acceso total</option>
+        <option value="visualizador">Visualizador — solo lectura y PDF</option>
+      </select>
+    </div>
+    <div class="campo" id="usuario-cliente-wrap" style="display:none;"><label>Cliente asociado</label>
+      <select id="usuario-cliente"></select>
+      <p style="font-size:11.5px;color:var(--gris-500);margin-top:4px;">El visualizador solo verá las inspecciones de este cliente.</p>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarUsuario()"><i class="ti ti-user-check" aria-hidden="true"></i> Crear usuario</button>
+  </div>
+</div>
+
+<!-- ============ Modal: Equipo del cliente (activo) ============ -->
+<div class="modal-overlay" id="modal-equipo">
+  <div class="modal-box" style="max-width:480px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-header">
+      <h2 id="modal-equipo-titulo">Nuevo equipo</h2>
+      <button onclick="UI.cerrarModal('modal-equipo')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <input type="hidden" id="equipo-id-edit">
+    <input type="hidden" id="equipo-cliente-id">
+    <div class="campo"><label>Tipo de sistema *</label>
+      <select id="equipo-tipo" onchange="UI.renderizarCamposEquipo(this.value)"></select>
+    </div>
+    <div class="campo"><label>Identificación / TAG *</label>
+      <input type="text" id="equipo-tag" placeholder="Ej: Bomba diesel N°1 · Tanque principal · ECA PB Ala Este">
+    </div>
+    <div id="equipo-campos-dinamicos"></div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarEquipo()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar equipo</button>
+  </div>
+</div>
+
+<!-- ============ Modal: Invitación por email ============ -->
+<div class="modal-overlay" id="modal-invitacion">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-header">
+      <h2><i class="ti ti-mail-forward" aria-hidden="true"></i> Invitar por email</h2>
+      <button onclick="UI.cerrarModal('modal-invitacion')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="invitacion-resumen" style="background:var(--gris-50);border:1px solid var(--gris-200);border-radius:var(--border-radius-md);padding:12px;margin-bottom:12px;font-size:13px;color:var(--gris-700);line-height:1.6;"></div>
+    <p style="font-size:12px;color:var(--gris-500);margin-bottom:14px;line-height:1.5;">
+      Se abrirá tu aplicación de correo con la invitación ya redactada: link de acceso, usuario, PIN e instrucciones. Solo tocá <strong>Enviar</strong>.
+    </p>
+    <button class="btn btn-primary btn-block" onclick="UI.enviarInvitacionPendiente()" style="margin-bottom:8px;">
+      <i class="ti ti-send" aria-hidden="true"></i> Abrir correo con la invitación
+    </button>
+    <button class="btn btn-secundario btn-block" onclick="UI.cerrarModal('modal-invitacion')">Ahora no</button>
+  </div>
+</div>
+
+<!-- ============ Modal: Detalle de equipo (placa e historial) ============ -->
+<div class="modal-overlay" id="modal-detalle-equipo">
+  <div class="modal-box" style="max-width:520px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-header">
+      <h2 id="detalle-equipo-titulo">Equipo</h2>
+      <button onclick="UI.cerrarModal('modal-detalle-equipo')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="detalle-equipo-contenido"></div>
+  </div>
+</div>
+
+<!-- ============ Modal: Editar plan de acción (solo administrador) ============ -->
+<div class="modal-overlay" id="modal-editar-plan">
+  <div class="modal-box" style="max-width:460px;">
+    <div class="modal-header">
+      <h2><i class="ti ti-edit" aria-hidden="true"></i> Editar plan de acción</h2>
+      <button onclick="UI.cerrarModal('modal-editar-plan')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <input type="hidden" id="editplan-id">
+    <p id="editplan-cliente" style="font-size:12.5px;color:var(--gris-500);margin-bottom:12px;"></p>
+    <div class="campo"><label>Descripción del hallazgo *</label>
+      <textarea id="editplan-descripcion" rows="3" style="width:100%;resize:vertical;"></textarea>
+    </div>
+    <div class="campo"><label>Fecha límite *</label>
+      <input type="date" id="editplan-fecha">
+    </div>
+    <div class="campo"><label>Criticidad</label>
+      <select id="editplan-criticidad">
+        <option value="alta">Alta — crítico</option>
+        <option value="media">Media</option>
+      </select>
+    </div>
+    <div class="campo"><label>Estado</label>
+      <select id="editplan-estado">
+        <option value="pendiente">Pendiente</option>
+        <option value="en_proceso">En proceso</option>
+        <option value="cerrado">Resuelto / cerrado</option>
+      </select>
+      <p style="font-size:11.5px;color:var(--gris-500);margin-top:4px;">Si la fecha límite ya pasó y el estado es pendiente, se marcará como vencido automáticamente.</p>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="UI.guardarEdicionPlan()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar cambios</button>
+  </div>
+</div>
+
+<!-- ============ Modal: Detalle de inspección (visualización sin PDF) ============ -->
+<div class="modal-overlay" id="modal-detalle-inspeccion">
+  <div class="modal-box" style="max-width:640px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-header">
+      <h2 id="detalle-insp-titulo">Detalle de inspección</h2>
+      <button onclick="UI.cerrarModal('modal-detalle-inspeccion')"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="detalle-insp-contenido"></div>
+  </div>
+</div>
+
+<!-- ============ Toast de notificaciones ============ -->
+<div class="toast" id="toast"><i class="ti ti-info-circle" aria-hidden="true"></i><span id="toast-texto"></span></div>
+
+<!-- ============ Librerías externas ============ -->
+<script src="vendor/chartjs/chart.umd.js"></script>
+<script src="vendor/jspdf/jspdf.umd.min.js"></script>
+
+<!-- ============ Módulos de la aplicación ============ -->
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nfpa25-modelo.js"></script>
+<script src="js/equipos.js"></script>
+<script src="js/unidades.js"></script>
+<script src="js/curva-desempeno.js"></script>
+<script src="js/incidentes.js"></script>
+<script src="js/hallazgos-auditoria.js"></script>
+<script src="js/planes-accion.js"></script>
+<script src="js/fotos.js"></script>
+<script src="js/firma.js"></script>
+<script src="js/pdf-generator.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/ui-inspeccion.js"></script>
+<script src="js/ui-reportes.js"></script>
+<script src="js/ui-seguimiento.js"></script>
+<script src="js/ui-curva-desempeno.js"></script>
+<script src="js/ui-informe-consolidado.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
