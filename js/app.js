@@ -464,4 +464,10 @@ Object.assign(window.UI, { guardarConfig, exportarRespaldo, cargarFirmaPredeterm
   intentarLogin, cerrarSesionUI, abrirModalUsuario, guardarUsuario, eliminarUsuarioUI,
   enviarInvitacionPendiente, reenviarInvitacion });
 
-document.addEventListener('DOMContentLoaded', inicializarApp);
+document.addEventListener('DOMContentLoaded', async () => {
+  await inicializarApp();
+  // Iniciar sincronización Firebase en segundo plano (no bloquea la app)
+  if (typeof FireSync !== 'undefined') {
+    FireSync.init().catch(e => console.warn('Firebase init:', e));
+  }
+});

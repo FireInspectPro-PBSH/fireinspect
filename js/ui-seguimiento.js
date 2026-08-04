@@ -212,7 +212,7 @@ async function eliminarIncidente(incidenteId) {
   const ok = await modalConfirmar('Eliminar incidente', 'Este incidente y sus datos no podrán recuperarse.');
   if (!ok) return;
   try {
-    await FireDB.delete(FireDB.STORES.INCIDENTES, incidenteId);
+    await FireSync.delete(FireDB.STORES.INCIDENTES, incidenteId);
     mostrarToast('Incidente eliminado', 'exito');
     renderizarIncidentes();
     renderizarDashboard();
@@ -223,7 +223,7 @@ async function eliminarHallazgo(hallazgoId) {
   const ok = await modalConfirmar('Eliminar hallazgo', 'Este hallazgo y su plan de acción asociado no podrán recuperarse.');
   if (!ok) return;
   try {
-    await FireDB.delete(FireDB.STORES.HALLAZGOS_AUDITORIA, hallazgoId);
+    await FireSync.delete(FireDB.STORES.HALLAZGOS_AUDITORIA, hallazgoId);
     mostrarToast('Hallazgo eliminado', 'exito');
     renderizarHallazgos();
     renderizarDashboard();

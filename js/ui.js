@@ -469,10 +469,10 @@ async function eliminarInspeccion(inspeccionId, clienteId) {
     modal.querySelector('#btn-confirm-del').onclick = async () => {
       modal.remove();
       try {
-        await FireDB.delete(FireDB.STORES.INSPECCIONES, inspeccionId);
+        await FireSync.delete(FireDB.STORES.INSPECCIONES, inspeccionId);
         // Eliminar también las fotos asociadas si existen
         const fotos = await FireDB.getByIndex(FireDB.STORES.FOTOS, 'inspeccionId', inspeccionId).catch(() => []);
-        for (const f of fotos) await FireDB.delete(FireDB.STORES.FOTOS, f.id).catch(() => {});
+        for (const f of fotos) await FireSync.delete(FireDB.STORES.FOTOS, f.id).catch(() => {});
         mostrarToast('Inspección eliminada', 'exito');
         hubIrA('inspecciones');
       } catch(e) {
@@ -912,10 +912,10 @@ async function guardarCliente() {
 
   if (id) {
     const existente = await FireDB.get(FireDB.STORES.CLIENTES, id);
-    await FireDB.put(FireDB.STORES.CLIENTES, { ...existente, ...datos });
+    await FireSync.put(FireDB.STORES.CLIENTES, { ...existente, ...datos });
     mostrarToast('Cliente actualizado', 'exito');
   } else {
-    await FireDB.add(FireDB.STORES.CLIENTES, datos);
+    await FireSync.add(FireDB.STORES.CLIENTES, datos);
     mostrarToast('Cliente agregado', 'exito');
   }
 

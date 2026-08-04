@@ -79,10 +79,10 @@ const Equipos = (() => {
   async function obtener(id)  { return FireDB.get(FireDB.STORES.EQUIPOS, id); }
   async function guardar(eq)  {
     if (!eq.id) { eq.id = `eq_${Date.now()}_${Math.random().toString(36).slice(2,7)}`; eq.creadoEl = new Date().toISOString(); }
-    await FireDB.put(FireDB.STORES.EQUIPOS, eq);
+    await FireSync.put(FireDB.STORES.EQUIPOS, eq);
     return eq;
   }
-  async function eliminar(id) { return FireDB.delete(FireDB.STORES.EQUIPOS, id); }
+  async function eliminar(id) { return FireSync.delete(FireDB.STORES.EQUIPOS, id); }
 
   return { camposDe, CAMPOS_PLACA_BOMBA, TIPOS, tipoLabel, tipoIcono, tipoColor, resumenDe,
            listarPorCliente, obtener, guardar, eliminar };

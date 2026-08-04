@@ -51,7 +51,7 @@ async function crearHallazgo(datos) {
     planAccionId: null
   };
 
-  const guardado = await FireDB.add(FireDB.STORES.HALLAZGOS_AUDITORIA, hallazgo);
+  const guardado = await FireSync.add(FireDB.STORES.HALLAZGOS_AUDITORIA, hallazgo);
 
   const categoriaInfo = CATEGORIAS_HALLAZGO.find(c => c.id === datos.categoria);
   const plan = {
@@ -73,10 +73,10 @@ async function crearHallazgo(datos) {
       { fecha: new Date().toISOString(), evento: 'Plan generado automáticamente desde hallazgo de auditoría', estado: PlanesAccion.ESTADOS.PENDIENTE }
     ]
   };
-  const planGuardado = await FireDB.add(FireDB.STORES.PLANES_ACCION, plan);
+  const planGuardado = await FireSync.add(FireDB.STORES.PLANES_ACCION, plan);
 
   guardado.planAccionId = planGuardado.id;
-  await FireDB.put(FireDB.STORES.HALLAZGOS_AUDITORIA, guardado);
+  await FireSync.put(FireDB.STORES.HALLAZGOS_AUDITORIA, guardado);
 
   return guardado;
 }
@@ -114,7 +114,7 @@ async function sincronizarCierreDesdeHallazgo(hallazgoId, nuevoEstado) {
   const hallazgo = await FireDB.get(FireDB.STORES.HALLAZGOS_AUDITORIA, hallazgoId);
   if (!hallazgo) return;
   hallazgo.estado = nuevoEstado;
-  await FireDB.put(FireDB.STORES.HALLAZGOS_AUDITORIA, hallazgo);
+  await FireSync.put(FireDB.STORES.HALLAZGOS_AUDITORIA, hallazgo);
 }
 
 async function calcularIndicadoresHallazgos(clienteId) {

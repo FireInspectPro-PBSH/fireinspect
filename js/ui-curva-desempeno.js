@@ -974,7 +974,7 @@ async function cdGuardar() {
     conclusion: document.getElementById('cd-conclusion-texto').textContent,
   };
 
-  await FireDB.add(FireDB.STORES.INSPECCIONES, {
+  await FireSync.add(FireDB.STORES.INSPECCIONES, {
     ...prueba,
     tipoSistema: 'bomba',
     tipoSubtipo: 'curva_desempeno',

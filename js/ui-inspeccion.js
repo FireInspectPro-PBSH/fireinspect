@@ -460,11 +460,11 @@ async function guardarInspeccion() {
     fotos: Estado.fotosInspeccionTemp.slice()
   };
 
-  const guardada = await FireDB.add(FireDB.STORES.INSPECCIONES, inspeccion);
+  const guardada = await FireSync.add(FireDB.STORES.INSPECCIONES, inspeccion);
 
   // guarda las fotos también en su propia tabla, asociadas a esta inspección
   for (const foto of Estado.fotosInspeccionTemp) {
-    await FireDB.add(FireDB.STORES.FOTOS, { inspeccionId: guardada.id, dataUrl: foto.dataUrl, descripcion: foto.descripcion });
+    await FireSync.add(FireDB.STORES.FOTOS, { inspeccionId: guardada.id, dataUrl: foto.dataUrl, descripcion: foto.descripcion });
   }
 
   const planesGenerados = await PlanesAccion.generarDesdeInspeccion(guardada);

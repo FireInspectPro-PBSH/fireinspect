@@ -47,7 +47,7 @@ async function generarPlanesDesdeInspeccion(inspeccion) {
         ]
       };
 
-      const guardado = await FireDB.add(FireDB.STORES.PLANES_ACCION, plan);
+      const guardado = await FireSync.add(FireDB.STORES.PLANES_ACCION, plan);
       planesCreados.push(guardado);
     }
   }
@@ -75,7 +75,7 @@ async function actualizarEstadoPlan(planId, nuevoEstado, nota) {
     plan.fechaCierre = new Date().toISOString();
   }
 
-  const resultado = await FireDB.put(FireDB.STORES.PLANES_ACCION, plan);
+  const resultado = await FireSync.put(FireDB.STORES.PLANES_ACCION, plan);
 
   if (plan.hallazgoAuditoriaId && window.HallazgosAuditoria) {
     await HallazgosAuditoria.sincronizarCierreDesdeHallazgo(plan.hallazgoAuditoriaId, nuevoEstado);
@@ -98,7 +98,7 @@ async function actualizarVencimientos() {
     if (yaVencido && noEstaCerrado && noMarcadoComoVencido) {
       plan.estado = ESTADOS_PLAN.VENCIDO;
       plan.historial.push({ fecha: new Date().toISOString(), evento: 'Marcado automáticamente como vencido', estado: ESTADOS_PLAN.VENCIDO });
-      await FireDB.put(FireDB.STORES.PLANES_ACCION, plan);
+      await FireSync.put(FireDB.STORES.PLANES_ACCION, plan);
       actualizados++;
     }
   }

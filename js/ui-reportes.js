@@ -199,7 +199,7 @@ async function guardarEvento() {
     nota: document.getElementById('evento-nota').value.trim()
   };
 
-  await FireDB.add(FireDB.STORES.EVENTOS, evento);
+  await FireSync.add(FireDB.STORES.EVENTOS, evento);
   cerrarModal('modal-evento');
   mostrarToast('Inspección agendada', 'exito');
   renderizarCalendario();
@@ -207,7 +207,7 @@ async function guardarEvento() {
 }
 
 async function eliminarEvento(eventoId) {
-  await FireDB.delete(FireDB.STORES.EVENTOS, eventoId);
+  await FireSync.delete(FireDB.STORES.EVENTOS, eventoId);
   mostrarToast('Evento eliminado');
   renderizarCalendario();
   renderizarDashboard();
@@ -244,7 +244,7 @@ async function eliminarPlan(planId) {
   });
   if (!confirmar) return;
   try {
-    await FireDB.delete(FireDB.STORES.PLANES_ACCION, planId);
+    await FireSync.delete(FireDB.STORES.PLANES_ACCION, planId);
     mostrarToast('Plan eliminado', 'exito');
     renderizarPlanes();
     if (typeof renderizarDashboard === 'function') renderizarDashboard();
@@ -852,7 +852,7 @@ async function guardarEdicionPlan() {
   plan.historial = plan.historial || [];
   plan.historial.push({ fecha: new Date().toISOString(), nota: 'Plan editado por el administrador' });
 
-  await FireDB.put(FireDB.STORES.PLANES_ACCION, plan);
+  await FireSync.put(FireDB.STORES.PLANES_ACCION, plan);
   await PlanesAccion.actualizarVencimientos();
   cerrarModal('modal-editar-plan');
   mostrarToast('Plan actualizado', 'exito');

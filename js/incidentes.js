@@ -34,17 +34,17 @@ async function crearIncidente(datos) {
     responsableReporte: datos.responsableReporte || '',
     fotos: datos.fotos || []
   };
-  return FireDB.add(FireDB.STORES.INCIDENTES, incidente);
+  return FireSync.add(FireDB.STORES.INCIDENTES, incidente);
 }
 
 async function actualizarIncidente(id, datos) {
   const existente = await FireDB.get(FireDB.STORES.INCIDENTES, id);
   if (!existente) throw new Error('Incidente no encontrado');
-  return FireDB.put(FireDB.STORES.INCIDENTES, { ...existente, ...datos });
+  return FireSync.put(FireDB.STORES.INCIDENTES, { ...existente, ...datos });
 }
 
 async function eliminarIncidente(id) {
-  return FireDB.delete(FireDB.STORES.INCIDENTES, id);
+  return FireSync.delete(FireDB.STORES.INCIDENTES, id);
 }
 
 function obtenerTipoIncidente(id) {
