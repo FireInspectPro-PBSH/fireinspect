@@ -549,8 +549,9 @@
     <p style="font-size:12px;color:var(--gris-500);margin-bottom:12px;">Exportá toda tu información (clientes, inspecciones, fotos) a un archivo, o restaurala en otro dispositivo.</p>
     <div class="btn-fila" style="margin-top:0;">
       <div style="border-top:1px solid var(--gris-200);margin:16px 0;"></div>
-      <p style="font-size:12px;color:var(--gris-500);margin-bottom:8px;"><i class="ti ti-cloud" aria-hidden="true"></i> <strong>Sincronización en la nube</strong> — sube todos tus datos a Firebase para verlos en cualquier dispositivo.</p>
-      <button class="btn btn-secundario btn-block" style="margin-bottom:12px;" onclick="FireSync.syncCompleto()"><i class="ti ti-cloud-upload" aria-hidden="true"></i> Subir todos los datos a la nube</button>
+      <p style="font-size:12px;color:var(--gris-500);margin-bottom:10px;"><i class="ti ti-cloud" aria-hidden="true"></i> <strong>Sincronización en la nube</strong> — controlá cuándo subir y cuándo bajar datos.</p>
+      <button class="btn btn-secundario btn-block" style="margin-bottom:8px;" onclick="FireSync.subir()"><i class="ti ti-cloud-upload" aria-hidden="true"></i> ⬆ Subir mis datos a la nube</button>
+      <button class="btn btn-secundario btn-block" style="margin-bottom:12px;" onclick="FireSync.bajar()"><i class="ti ti-cloud-download" aria-hidden="true"></i> ⬇ Bajar datos de otro dispositivo</button>
       <button class="btn btn-secundario" onclick="UI.exportarRespaldo()"><i class="ti ti-download" aria-hidden="true"></i> Exportar todo</button>
       <button class="btn btn-secundario" onclick="document.getElementById('input-importar').click()"><i class="ti ti-upload" aria-hidden="true"></i> Importar</button>
       <input type="file" id="input-importar" accept=".json" style="display:none;">
