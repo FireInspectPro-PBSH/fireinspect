@@ -7,7 +7,7 @@
    inspector pueda trabajar en un edificio sin señal.
    ============================================================ */
 
-const CACHE_NAME = 'fireinspect-cache-v29';
+const CACHE_NAME = 'fireinspect-cache-v30';
 
 const ARCHIVOS_PARA_CACHEAR = [
   './',
