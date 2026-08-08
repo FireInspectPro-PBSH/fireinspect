@@ -341,7 +341,7 @@ function dibujarFirma(doc, y, firmaDataUrl, nombreInspector) {
   doc.setFont(undefined, 'normal');
   doc.setFontSize(7);
   doc.setTextColor(150, 150, 150);
-  doc.text(`Documento generado por FireInspect Pro — ${new Date().toLocaleDateString('es-AR')}`, 12, y + 16);
+  doc.text(`Documento generado por FireInspect Pro — ${datos.fecha ? new Date(datos.fecha+'T12:00:00').toLocaleDateString('es-AR') : new Date().toLocaleDateString('es-AR')}`, 12, y + 16);
 
   return y + 20;
 }

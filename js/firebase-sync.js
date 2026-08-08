@@ -1,10 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
-   FireInspect Pro — Sincronización Firebase + IndexedDB
-   Estrategia híbrida:
-   - Offline: todo funciona con IndexedDB local (igual que antes)
-   - Online: sincroniza automáticamente con Firestore
-   - Sin conexión en campo → se guarda local → al volver a conectar
-     sube todo lo pendiente automáticamente
+   FireInspect Pro — Sincronización Firebase MANUAL
+   - Sin sincronización automática en tiempo real
+   - Vos decidís cuándo subir (local → nube) y cuándo bajar (nube → local)
+   - Los datos locales NUNCA se pisan automáticamente
 ═══════════════════════════════════════════════════════════════════ */
 
 const FIREBASE_CONFIG = {
@@ -16,262 +14,198 @@ const FIREBASE_CONFIG = {
   appId: "1:463578095408:web:914085ab75c78e9dfdb2f5"
 };
 
-// Stores que se sincronizan (excluimos CONFIG y FOTOS — muy pesadas)
 const STORES_SYNC = [
   'clientes', 'inspecciones', 'planes_accion',
   'incidentes', 'hallazgos_auditoria', 'equipos',
   'eventos_calendario', 'usuarios'
 ];
 
-let _db       = null;   // Firestore instance
-let _online   = false;
-let _escuchas = [];     // listeners activos de Firestore
+let _db     = null;
+let _online = false;
+let _listo  = false;
 
-/* ── Inicialización ── */
+/* ── Indicador visual ── */
+function _badge(estado) {
+  let b = document.getElementById('sync-badge');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'sync-badge';
+    b.style.cssText = 'position:fixed;bottom:76px;right:12px;z-index:8888;' +
+      'display:flex;align-items:center;gap:6px;background:white;border-radius:20px;' +
+      'padding:5px 10px;font-size:11px;font-weight:600;' +
+      'box-shadow:0 2px 8px rgba(0,0,0,0.15);border:1px solid #e5e7eb;cursor:default;';
+    document.body.appendChild(b);
+  }
+  const cfg = {
+    online:   { c:'#10B981', t:'Firebase listo',  i:'●' },
+    offline:  { c:'#F59E0B', t:'Sin conexión',    i:'●' },
+    syncing:  { c:'#3B82F6', t:'Sincronizando…',  i:'↻' },
+    error:    { c:'#EF4444', t:'Error',            i:'!' },
+  };
+  const s = cfg[estado] || cfg.offline;
+  b.innerHTML = `<span style="color:${s.c};font-size:14px;">${s.i}</span><span style="color:#374151;">${s.t}</span>`;
+  b.style.opacity = '1';
+  if (estado === 'online') setTimeout(() => { b.style.opacity='0.35'; }, 3000);
+}
+
+/* ── Limpiar datos para Firestore (sin imágenes base64) ── */
+function _limpiar(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const r = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) continue;
+    if (typeof v === 'string' && v.startsWith('data:image')) { r[k] = '[img_local]'; continue; }
+    if (Array.isArray(v)) { r[k] = v.map(i => typeof i === 'object' ? _limpiar(i) : i); }
+    else if (v !== null && typeof v === 'object') { r[k] = _limpiar(v); }
+    else r[k] = v;
+  }
+  return r;
+}
+
+/* ── Inicializar Firebase (solo conexión, sin listeners) ── */
 async function fsInit() {
   try {
-    // Cargar SDK de Firebase dinámicamente
-    if (!window.firebase) {
-      await _cargarSDK('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
-      await _cargarSDK('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js');
-    }
+    // SDKs ya cargados desde index.html
+    if (!window.firebase) throw new Error('Firebase SDK no cargado');
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     _db = firebase.firestore();
-    // Habilitar persistencia offline (caché local de Firestore)
-    await _db.enablePersistence({ synchronizeTabs: true }).catch(e => {
-      if (e.code !== 'failed-precondition' && e.code !== 'unimplemented') console.warn('Persistencia Firestore:', e);
-    });
     _online = true;
-    console.log('✅ Firebase conectado');
-    _iniciarEscuchas();
-    _sincronizarPendientes();
-    _mostrarEstadoSync('online');
+    _listo  = true;
+    _badge('online');
+    console.log('✅ Firebase listo');
     return true;
   } catch(e) {
-    console.warn('Firebase no disponible — modo offline:', e.message);
-    _online = false;
-    _mostrarEstadoSync('offline');
+    console.warn('Firebase no disponible:', e.message);
+    _badge('offline');
     return false;
   }
 }
 
-function _cargarSDK(url) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${url}"]`)) return resolve();
+function _sdk(url) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${url}"]`)) return res();
     const s = document.createElement('script');
-    s.src = url; s.onload = resolve; s.onerror = reject;
+    s.src = url; s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
 }
 
-/* ── Indicador visual de estado de sincronización ── */
-function _mostrarEstadoSync(estado) {
-  let badge = document.getElementById('sync-badge');
-  if (!badge) {
-    badge = document.createElement('div');
-    badge.id = 'sync-badge';
-    badge.style.cssText = `
-      position:fixed;bottom:70px;right:12px;z-index:8888;
-      display:flex;align-items:center;gap:6px;
-      background:white;border-radius:20px;padding:5px 10px;
-      font-size:11px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.15);
-      border:1px solid #e5e7eb;transition:opacity 0.3s;cursor:default;
-    `;
-    document.body.appendChild(badge);
-  }
-  const configs = {
-    online:     { color:'#10B981', texto:'Sincronizado',   icono:'●' },
-    offline:    { color:'#F59E0B', texto:'Sin conexión',   icono:'●' },
-    syncing:    { color:'#3B82F6', texto:'Sincronizando…', icono:'↻' },
-    error:      { color:'#EF4444', texto:'Error sync',     icono:'!' },
-  };
-  const c = configs[estado] || configs.offline;
-  badge.innerHTML = `<span style="color:${c.color};font-size:14px;">${c.icono}</span><span style="color:#374151;">${c.texto}</span>`;
-  // Auto-ocultar badge "Sincronizado" después de 4 segundos
-  if (estado === 'online') setTimeout(() => { if(badge) badge.style.opacity='0.4'; }, 4000);
-  else badge.style.opacity = '1';
-}
-
-/* ── Cola de pendientes (guardada en localStorage) ── */
-const COLA_KEY = 'fs_cola_pendientes';
-
-function _agregarACola(operacion) {
-  const cola = JSON.parse(localStorage.getItem(COLA_KEY) || '[]');
-  cola.push({ ...operacion, ts: Date.now() });
-  localStorage.setItem(COLA_KEY, JSON.stringify(cola));
-}
-
-function _limpiarCola() {
-  localStorage.removeItem(COLA_KEY);
-}
-
-async function _sincronizarPendientes() {
-  if (!_online) return;
-  const cola = JSON.parse(localStorage.getItem(COLA_KEY) || '[]');
-  if (!cola.length) return;
-  _mostrarEstadoSync('syncing');
-  try {
-    for (const op of cola) {
-      if (op.tipo === 'put' || op.tipo === 'add') {
-        await _db.collection(op.store).doc(op.data.id).set(_limpiarParaFirestore(op.data));
-      } else if (op.tipo === 'delete') {
-        await _db.collection(op.store).doc(op.id).delete();
-      }
-    }
-    _limpiarCola();
-    _mostrarEstadoSync('online');
-  } catch(e) {
-    console.warn('Error sincronizando pendientes:', e);
-    _mostrarEstadoSync('error');
-  }
-}
-
-/* ── Limpiar datos antes de enviar a Firestore (sin undefined, sin dataURLs pesadas) ── */
-function _limpiarParaFirestore(obj) {
-  const limpio = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === undefined) continue;
-    // No subir imágenes base64 a Firestore (muy pesadas — van a Storage eventualmente)
-    if (typeof v === 'string' && v.startsWith('data:image')) {
-      limpio[k] = '[imagen_local]';
-      continue;
-    }
-    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-      limpio[k] = _limpiarParaFirestore(v);
-    } else if (Array.isArray(v)) {
-      limpio[k] = v.map(item => typeof item === 'object' && item !== null ? _limpiarParaFirestore(item) : item);
-    } else {
-      limpio[k] = v;
-    }
-  }
-  return limpio;
-}
-
-/* ── Escuchas en tiempo real (Firestore → IndexedDB local) ── */
-function _iniciarEscuchas() {
-  if (!_online || !_db) return;
-  // Cancelar escuchas anteriores
-  _escuchas.forEach(u => u());
-  _escuchas = [];
-
-  STORES_SYNC.forEach(store => {
-    const unsub = _db.collection(store).onSnapshot(async snapshot => {
-      for (const change of snapshot.docChanges()) {
-        const data = { id: change.doc.id, ...change.doc.data() };
-        if (change.type === 'added' || change.type === 'modified') {
-          // Restaurar imágenes locales si existen
-          const local = await FireDB.get({ STORES: { [store.toUpperCase()]: store } }.STORES?.[store.toUpperCase()] || store, data.id).catch(()=>null);
-          if (local) {
-            // Preservar imágenes locales que Firestore no tiene
-            for (const k of Object.keys(local)) {
-              if (typeof local[k] === 'string' && local[k].startsWith('data:image') && data[k] === '[imagen_local]') {
-                data[k] = local[k];
-              }
-            }
-          }
-          await FireDB.put(store, data).catch(()=>{});
-        } else if (change.type === 'removed') {
-          await FireDB.delete(store, data.id).catch(()=>{});
-        }
-      }
-      // Refrescar la UI si hay datos nuevos
-      if (snapshot.docChanges().length > 0 && typeof renderizarDashboard === 'function') {
-        renderizarDashboard();
-      }
-    }, err => {
-      console.warn('Error escucha Firestore:', store, err);
-    });
-    _escuchas.push(unsub);
-  });
-}
-
-/* ── API pública: operaciones que van a IndexedDB + Firestore ── */
-
-async function fsPut(store, data) {
-  // 1. Guardar local siempre (funciona offline)
-  const resultado = await FireDB.put(store, data);
-  // 2. Intentar subir a Firestore
-  if (_online && _db) {
-    try {
-      await _db.collection(store).doc(data.id).set(_limpiarParaFirestore(data));
-    } catch(e) {
-      // Si falla, agregar a cola de pendientes
-      _agregarACola({ tipo: 'put', store, data });
-      _mostrarEstadoSync('offline');
-    }
-  } else {
-    _agregarACola({ tipo: 'put', store, data });
-  }
-  return resultado;
-}
-
-async function fsAdd(store, data) {
-  const resultado = await FireDB.add(store, data);
-  if (_online && _db) {
-    try {
-      await _db.collection(store).doc(resultado.id).set(_limpiarParaFirestore(resultado));
-    } catch(e) {
-      _agregarACola({ tipo: 'add', store, data: resultado });
-      _mostrarEstadoSync('offline');
-    }
-  } else {
-    _agregarACola({ tipo: 'add', store, data: resultado });
-  }
-  return resultado;
-}
-
-async function fsDelete(store, id) {
-  await FireDB.delete(store, id);
-  if (_online && _db) {
-    try {
-      await _db.collection(store).doc(id).delete();
-    } catch(e) {
-      _agregarACola({ tipo: 'delete', store, id });
-    }
-  } else {
-    _agregarACola({ tipo: 'delete', store, id });
-  }
-}
-
-/* ── Subida inicial: mandar todos los datos locales a Firebase (primera vez) ── */
-async function fsSyncCompleto() {
-  if (!_online || !_db) {
-    mostrarToast('Sin conexión — imposible sincronizar', 'error');
-    return;
-  }
-  _mostrarEstadoSync('syncing');
+/* ══════════════════════════════════════════════════════════════
+   SUBIR — local → Firebase  (no toca datos locales)
+══════════════════════════════════════════════════════════════ */
+async function fsSyncSUBIR() {
+  if (!_listo) { mostrarToast('Firebase no conectado', 'error'); return; }
+  _badge('syncing');
   mostrarToast('Subiendo datos a la nube...');
   try {
     let total = 0;
     for (const store of STORES_SYNC) {
       const items = await FireDB.getAll(store);
-      const batch = _db.batch();
-      items.forEach(item => {
-        const ref = _db.collection(store).doc(item.id);
-        batch.set(ref, _limpiarParaFirestore(item));
-      });
-      if (items.length) await batch.commit();
+      if (!items.length) continue;
+      // Subir en lotes de 400 (límite Firestore batch = 500)
+      for (let i = 0; i < items.length; i += 400) {
+        const batch = _db.batch();
+        items.slice(i, i + 400).forEach(item => {
+          batch.set(_db.collection(store).doc(item.id), _limpiar(item));
+        });
+        await batch.commit();
+      }
       total += items.length;
     }
-    _limpiarCola();
-    _mostrarEstadoSync('online');
-    mostrarToast(`✅ ${total} registros sincronizados`, 'exito');
+    _badge('online');
+    mostrarToast(`✅ ${total} registros subidos a la nube`, 'exito');
   } catch(e) {
-    _mostrarEstadoSync('error');
-    mostrarToast('Error al sincronizar: ' + e.message, 'error');
+    _badge('error');
+    mostrarToast('Error al subir: ' + e.message, 'error');
+    console.error(e);
   }
 }
 
-/* ── Detectar cambios de conectividad ── */
-window.addEventListener('online',  () => { _online = true;  fsInit(); });
-window.addEventListener('offline', () => { _online = false; _mostrarEstadoSync('offline'); });
+/* ══════════════════════════════════════════════════════════════
+   BAJAR — Firebase → local  (reemplaza datos locales)
+   ⚠️  Solo usar cuando querés traer datos de otro dispositivo
+══════════════════════════════════════════════════════════════ */
+async function fsSyncBAJAR() {
+  if (!_listo) { mostrarToast('Firebase no conectado', 'error'); return; }
+
+  // Confirmar antes de pisar datos locales
+  const ok = await new Promise(resolve => {
+    const m = document.createElement('div');
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    m.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="background:#FEF3C7;border-radius:50%;padding:8px;"><i class="ti ti-cloud-download" style="color:#D97706;font-size:20px;"></i></div>
+          <strong style="font-size:15px;">Bajar datos de la nube</strong>
+        </div>
+        <p style="font-size:13px;color:#6B7280;line-height:1.5;margin-bottom:20px;">
+          Esto va a <strong>reemplazar tus datos locales</strong> con los que están en Firebase.<br><br>
+          Usá esta opción solo para sincronizar desde otro dispositivo.<br><br>
+          <strong>¿Querés continuar?</strong>
+        </p>
+        <div style="display:flex;gap:10px;">
+          <button id="_fd_cancel" class="btn btn-secundario" style="flex:1;">Cancelar</button>
+          <button id="_fd_ok" class="btn" style="flex:1;background:#D97706;color:white;">Bajar datos</button>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+    m.querySelector('#_fd_cancel').onclick = () => { m.remove(); resolve(false); };
+    m.querySelector('#_fd_ok').onclick     = () => { m.remove(); resolve(true);  };
+  });
+  if (!ok) return;
+
+  _badge('syncing');
+  mostrarToast('Bajando datos de la nube...');
+  try {
+    let total = 0;
+    for (const store of STORES_SYNC) {
+      const snap = await _db.collection(store).get();
+      for (const doc of snap.docs) {
+        const data = { id: doc.id, ...doc.data() };
+        await FireDB.put(store, data).catch(()=>{});
+        total++;
+      }
+    }
+    _badge('online');
+    mostrarToast(`✅ ${total} registros bajados`, 'exito');
+    // Refrescar UI
+    if (typeof renderizarDashboard === 'function') setTimeout(renderizarDashboard, 500);
+  } catch(e) {
+    _badge('error');
+    mostrarToast('Error al bajar: ' + e.message, 'error');
+  }
+}
+
+/* ── Detectar conectividad (solo actualiza el badge, no inicia Firebase) ── */
+window.addEventListener('online',  () => { _online = true;  if (_listo) _badge('online'); });
+window.addEventListener('offline', () => { _online = false; _badge('offline'); });
+
+/* ── Limpiar datos semilla de Firebase (cli_1, cli_2, etc.) ── */
+async function fsLimpiarSemillas() {
+  if (!_listo) { mostrarToast('Conectá Firebase primero', 'error'); return; }
+  try {
+    const snap = await _db.collection('clientes').get();
+    const semillas = snap.docs.filter(d => /^cli_\d+$/.test(d.id));
+    if (semillas.length === 0) {
+      mostrarToast('No hay datos semilla para limpiar', 'exito');
+      return;
+    }
+    const batch = _db.batch();
+    semillas.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    mostrarToast(`✅ ${semillas.length} datos semilla eliminados de Firebase`, 'exito');
+  } catch(e) {
+    mostrarToast('Error: ' + e.message, 'error');
+  }
+}
 
 /* ── Export público ── */
 window.FireSync = {
-  init:         fsInit,
-  put:          fsPut,
-  add:          fsAdd,
-  delete:       fsDelete,
-  syncCompleto: fsSyncCompleto,
-  get online()  { return _online; },
+  init:           fsInit,
+  subir:          fsSyncSUBIR,
+  bajar:          fsSyncBAJAR,
+  syncCompleto:   fsSyncSUBIR,
+  limpiarSemillas: fsLimpiarSemillas,
+  get online() { return _online; },
+  get listo()  { return _listo;  },
 };

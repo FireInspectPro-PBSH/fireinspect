@@ -466,8 +466,8 @@ Object.assign(window.UI, { guardarConfig, exportarRespaldo, cargarFirmaPredeterm
 
 document.addEventListener('DOMContentLoaded', async () => {
   await inicializarApp();
-  // Iniciar sincronización Firebase en segundo plano (no bloquea la app)
+  // Iniciar Firebase en segundo plano — SOLO conecta, no baja ni sube datos
   if (typeof FireSync !== 'undefined') {
-    FireSync.init().catch(e => console.warn('Firebase init:', e));
+    FireSync.init().catch(e => console.warn('Firebase:', e));
   }
 });

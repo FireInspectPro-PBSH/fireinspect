@@ -1739,7 +1739,7 @@ function _pdfFooter(doc, pagina, total, codigo) {
   doc.setFontSize(6.5); doc.setTextColor(140,140,140);
   doc.setFont(undefined,'normal');
   doc.text(`Código: ${codigo}`, 12, ph - 7);
-  doc.text(`FireInspect Pro · ${new Date().toLocaleDateString('es-AR')}`, pw/2, ph - 7, { align:'center' });
+  doc.text(`FireInspect Pro · ${d.fecha ? new Date(d.fecha+'T12:00:00').toLocaleDateString('es-AR') : new Date().toLocaleDateString('es-AR')}`, pw/2, ph - 7, { align:'center' });
   doc.text(`Página ${pagina} de ${total}`, pw - 12, ph - 7, { align:'right' });
 }
 
@@ -1893,7 +1893,7 @@ function _pdfCaratula(doc, d, codigo) {
 
   // Pie carátula
   doc.setFontSize(6.5); doc.setTextColor(140,140,140); doc.setFont(undefined,'normal');
-  doc.text(`Documento generado por FireInspect Pro · ${new Date().toLocaleDateString('es-AR')}`, pw/2, ph - 10, { align:'center' });
+  doc.text(`Documento generado por FireInspect Pro · ${d.fecha ? new Date(d.fecha+'T12:00:00').toLocaleDateString('es-AR') : new Date().toLocaleDateString('es-AR')}`, pw/2, ph - 10, { align:'center' });
   doc.text(`Código: ${codigo}  ·  Página 1`, pw/2, ph - 5, { align:'center' });
 }
 
