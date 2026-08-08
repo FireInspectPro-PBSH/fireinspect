@@ -1,3 +1,4 @@
+// Actualizado: 2026-08-08T15:11:29.329977
 /* ============================================================
    FireInspect Pro — Service Worker
    ============================================================
@@ -7,7 +8,7 @@
    inspector pueda trabajar en un edificio sin señal.
    ============================================================ */
 
-const CACHE_NAME = 'fireinspect-cache-v34';
+const CACHE_NAME = 'fireinspect-cache-v50';
 
 const ARCHIVOS_PARA_CACHEAR = [
   './',
